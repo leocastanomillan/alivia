@@ -152,12 +152,13 @@ button {
 }
 .google-button{display:flex;align-items:center;justify-content:center;gap:.75rem}
 .google-mark{height:1.45rem;width:1.45rem;flex:none}
-.bottom-nav{grid-template-columns:repeat(3,minmax(0,1fr));padding-bottom:max(.5rem,env(safe-area-inset-bottom))}
+.bottom-nav{grid-template-columns:repeat(4,minmax(0,1fr));padding-bottom:max(.5rem,env(safe-area-inset-bottom))}
 .invite-code{margin:1rem 0;border:2px dashed #1687d9;border-radius:1rem;background:#eef7ff;padding:1rem;text-align:center;font-size:2rem;font-weight:900;letter-spacing:.18em;color:#073b86}
 .learn-button{margin-top:.75rem;width:100%;border-radius:.75rem;background:#e7f2ff;padding:.75rem;font-size:.85rem;font-weight:900;color:#075cb7}
 .medicine-info{margin-top:1rem;white-space:pre-wrap;border-radius:1rem;background:#f4f9ff;padding:1rem;line-height:1.55;color:#244b70}
 .source-list{margin-top:1rem;display:flex;flex-direction:column;gap:.45rem;border-top:1px solid #d9e7f3;padding-top:1rem}
 .source-list a{color:#075cb7;text-decoration:underline;overflow-wrap:anywhere}
+.history-day{border:2px solid #d9e7f3;border-radius:1rem;padding:1rem}.history-day h2{text-transform:capitalize;color:#073b86}.history-row{display:flex;align-items:flex-start;gap:.75rem;border-top:1px solid #e4edf5;padding:.85rem 0}.history-row:first-of-type{margin-top:.65rem}.history-row span{font-size:1.35rem}.history-row div{display:flex;min-width:0;flex-direction:column}.history-row small{margin-top:.15rem;color:#607990}
 .hold-to-talk{margin-top:1rem;display:flex;min-height:5rem;width:100%;align-items:center;justify-content:center;gap:1rem;border:2px solid #78b4e8;border-radius:1rem;background:#eef7ff;padding:1rem;color:#075cb7;touch-action:none}
 .hold-to-talk.listening{border-color:#075cb7;background:#dceeff;box-shadow:0 0 0 5px #1687d933}
 .voice-bars{display:flex;height:2rem;align-items:center;gap:.2rem}
