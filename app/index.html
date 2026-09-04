@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cotiza tu envío a Colombia y otros países</title>
+<style>
+body { font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 20px; display: flex; justify-content: center; }
+.container { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 400px; width: 100%; }
+h2 { text-align: center; color: #00A651; }
+label { display: block; margin-top: 10px; color: #333; font-weight: bold; }
+input, select, button { box-sizing: border-box; width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ddd; border-radius: 5px; font-size: 16px; }
+.dimensiones { display: flex; gap: 5px; margin-top: 5px; }
+.dimensiones input { flex: 1 1 0; min-width: 0; }
+button { background-color: #00A651; color: white; font-weight: bold; border: none; cursor: pointer; }
+button:hover { background-color: #008F44; }
+#mensaje { margin-top: 10px; padding: 10px; display: none; border-radius: 5px; }
+#mensaje.error { background-color: #fdecea; color: #b71c1c; }
+#resultado { margin-top: 10px; }
+.item-label { font-weight: bold; }
+.total-button {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    background-color: #FFD900;
+    color: green;
+    text-align: center;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    margin-top: 10px;
+    font-weight: bold;
+    box-sizing: border-box;
+    line-height: 1;
+}
+.reset-button { margin-top: 10px; background-color: #555; }
+.reset-button:hover { background-color: #333; }
+@media (max-width: 500px) {
+    .container { max-width: 100%; padding: 15px; }
+    .dimensiones { flex-direction: column; }
+    input, select, button { font-size: 18px; padding: 14px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>Cotiza tu envío a Colombia y otros países</h2>
+<label for="pais">País de destino:</label>
+<select id="pais" onchange="toggleCotizador()">
+<option value="Colombia">Colombia</option>
+</select>
+<div id="colombiaFields">
+<label for="tipoEnvioCol">Tipo de envío:</label>
+<select id="tipoEnvioCol" onchange="toggleTipoEnvioCol()">
+<option value="Documento">Documento</option>
+<option value="Caja">Caja</option>
+</select>
+<div id="cajaFieldsCol">
+<label for="pesoCol">Peso (libras):</label>
+<input type="number" id="pesoCol" min="1" max="110" value="1">
+<small>Máximo permitido 110 lb.</small>
+<label for="valorDeclaradoCol">Valor declarado ($):</label>
+<input type="number" id="valorDeclaradoCol" min="30" max="2000" value="30">
+<small>Máximo permitido $2000USD.</small>
+<label>Dimensiones de la caja (pulgadas):</label>
+<div class="dimensiones">
+<input type="number" id="ancho" placeholder="Ancho" min="12" value="12">
+<input type="number" id="alto" placeholder="Alto" min="12" value="12">
+<input type="number" id="largo" placeholder="Largo" min="12" value="12">
+</div>
+</div>
+</div>
+<div id="otrosFields" style="display:none;">
+<label for="peso">Peso (libras):</label>
+<input type="number" id="peso" min="1" max="100" value="1">
+<small>Maximo 100 lb.</small>
+</div>
+<button onclick="calcularEnvio()">Calcular envío</button>
+<div id="mensaje"></div>
+<div id="resultado"></div>
+<button id="botonReset" class="reset-button" onclick="reiniciarFormulario()">Cotizar otro envío</button>
+</div>
+<script>
+// Aquí pegas tus arrays completos:
+const tarifasPorZona = {
+    A: [152.55, 152.55, 170.90, 189.33, 207.60, 225.99, 244.38, 262.77, 280.92, 299.36, 317.63, 336.00, 354.41, 372.75, 391.08, 409.49, 427.82, 446.28, 464.57, 482.90, 501.35, 519.62, 537.95, 556.35, 574.71, 593.07, 611.46, 629.82, 648.18, 666.59, 684.99, 703.35, 721.70, 740.10, 758.37, 776.72, 795.17, 813.50, 831.90, 850.17, 868.53, 886.95, 905.22, 923.61, 942.00, 960.44, 978.78, 997.14, 1015.52, 1033.67],
+    B: [42.54, 46.26, 49.86, 51.62, 58.10, 58.10, 64.56, 71.00, 77.46, 83.88, 90.33, 96.80, 103.26, 109.70, 116.16, 122.63, 122.63, 129.05, 135.51, 142.01, 148.46, 154.88, 161.33, 167.78, 174.23, 180.69, 187.13, 187.19, 193.64, 200.10, 206.46, 212.93, 219.35, 225.87, 232.29, 238.80, 245.22, 245.24, 251.61, 258.06, 264.54, 270.98, 277.44, 283.89, 290.34, 296.79, 303.29, 309.69, 309.71, 316.17],
+    C: [42.54, 46.26, 49.86, 51.62, 58.10, 58.10, 64.56, 70.97, 77.46, 83.91, 90.33, 96.77, 103.26, 109.70, 116.16, 122.57, 122.61, 129.05, 135.48, 141.98, 148.46, 154.89, 161.30, 167.81, 174.24, 180.69, 187.17, 187.17, 193.62, 200.04, 206.52, 212.94, 219.38, 225.89, 232.35, 238.76, 245.21, 245.24, 251.66, 258.11, 264.59, 271.01, 277.52, 283.94, 290.39, 296.90, 303.35, 309.75, 309.77, 316.19],
+    D: [35.54, 41.64, 42.87, 42.87, 49.71, 51.65, 55.44, 62.21, 68.34, 73.98, 79.49, 85.22, 90.27, 96.03, 101.00, 106.94, 106.94, 111.87, 116.69, 122.01, 127.02, 131.81, 137.46, 142.40, 147.96, 153.27, 158.45, 158.45, 163.95, 168.66, 174.21, 179.96, 184.65, 189.74, 194.94, 200.25, 205.40, 205.43, 210.26, 215.34, 221.09, 226.73, 231.95, 238.31, 243.96, 250.22, 256.97, 263.06, 263.40, 269.43],
+    E: [39.00, 42.93, 47.99, 52.85, 57.93, 62.93, 67.97, 72.93, 77.97, 82.98, 87.96, 93.02, 98.01, 102.95, 107.93, 113.01, 118.01, 122.99, 128.03, 132.99, 138.03, 143.03, 148.02, 153.06, 157.97, 163.01, 168.00, 173.09, 178.05, 183.08, 188.13, 192.99, 198.05, 203.03, 208.07, 213.05, 218.04, 223.05, 228.12, 233.12, 238.04, 243.03, 248.04, 253.11, 258.06, 263.06, 268.14, 273.15, 278.12, 283.05],
+    F: [108.53, 108.53, 125.72, 143.07, 160.31, 177.54, 194.75, 212.12, 229.34, 246.57, 263.81, 281.06, 298.35, 315.60, 332.78, 350.04, 367.29, 384.72, 401.91, 419.03, 436.43, 453.71, 470.93, 488.13, 505.47, 522.81, 539.88, 557.30, 574.41, 591.66, 609.08, 626.33, 643.49, 660.75, 678.17, 695.34, 712.64, 729.77, 746.99, 764.24, 781.65, 798.78, 816.05, 833.25, 850.65, 867.77, 885.02, 902.55, 919.61, 936.93],
+    G: [61.46, 61.46, 69.50, 77.91, 86.43, 96.23, 103.22, 110.61, 117.75, 123.36, 130.52, 136.82, 142.95, 148.83, 155.51, 163.89, 171.68, 178.71, 186.17, 192.77, 200.18, 207.32, 215.76, 223.95, 231.65, 240.21, 247.29, 255.80, 263.49, 271.52, 280.97, 289.46, 298.19, 306.99, 315.71, 324.12, 333.72, 342.62, 351.05, 359.85, 368.88, 378.11, 387.69, 396.71, 407.22, 416.93, 427.71, 438.30, 448.02, 457.73],
+    H: [42.54, 46.26, 49.86, 51.62, 58.10, 58.10, 64.56, 70.97, 77.46, 83.91, 90.33, 96.77, 103.26, 109.70, 116.16, 122.57, 122.61, 129.05, 135.48, 141.98, 148.46, 154.89, 161.30, 167.81, 174.24, 222.18, 230.06, 230.15, 237.87, 245.73, 253.77, 261.71, 269.58, 277.44, 285.38, 293.27, 300.99, 301.04, 308.91, 316.73, 324.77, 332.63, 340.58, 348.44, 356.30, 364.16, 372.17, 379.92, 379.97, 387.92],
+    I: [152.55, 152.57, 170.90, 189.33, 207.60, 225.99, 244.35, 262.74, 281.03, 299.42, 317.78, 336.20, 354.54, 372.93, 391.07, 409.47, 427.85, 446.28, 464.57, 482.91, 501.32, 519.71, 538.10, 556.37, 574.74, 593.13, 611.46, 629.82, 648.18, 666.57, 684.93, 703.35, 721.68, 740.12, 758.39, 776.79, 794.91, 813.26, 831.66, 850.08, 868.49, 886.82, 905.21, 923.55, 941.88, 960.33, 978.69, 997.05, 1015.32, 1033.61],
+    J: [61.46, 61.46, 69.50, 77.91, 86.43, 96.23, 103.22, 110.61, 117.75, 123.36, 130.52, 136.82, 142.95, 148.83, 155.51, 163.89, 171.68, 178.71, 186.17, 192.77, 200.18, 207.32, 215.76, 223.95, 231.65, 240.21, 247.29, 255.80, 263.49, 271.52, 280.97, 289.46, 298.19, 306.99, 315.71, 324.12, 333.72, 342.62, 351.05, 359.85, 368.88, 378.11, 387.69, 396.71, 407.22, 416.93, 427.71, 438.30, 448.02, 457.73],
+    K: [42.54, 46.26, 49.86, 51.62, 58.10, 58.10, 64.56, 71.00, 77.46, 83.88, 90.33, 96.80, 103.26, 109.70, 116.16, 122.63, 122.63, 129.05, 135.48, 141.98, 148.46, 154.88, 161.33, 167.81, 174.24, 180.71, 187.17, 187.17, 193.62, 200.06, 206.48, 212.97, 219.45, 225.87, 232.34, 238.76, 245.22, 245.27, 251.63, 258.11, 264.57, 271.01, 277.49, 283.89, 290.39, 296.82, 303.30, 309.74, 309.74, 316.22],
+    L: [152.55, 152.55, 170.90, 189.33, 207.60, 225.99, 244.35, 262.73, 281.12, 299.52, 317.64, 336.08, 354.47, 372.80, 391.13, 409.58, 427.91, 446.06, 464.40, 482.87, 501.26, 519.66, 538.01, 556.35, 574.68, 593.04, 611.40, 629.79, 648.18, 666.59, 684.99, 703.04, 721.53, 739.92, 758.01, 776.52, 794.87, 812.97, 831.44, 849.78, 868.14, 886.56, 904.68, 922.82, 941.42, 959.81, 977.90, 996.29, 1014.45, 1032.86],
+    M: [42.54, 46.26, 49.86, 51.62, 58.07, 58.10, 64.56, 71.00, 77.37, 83.87, 90.32, 96.77, 103.26, 109.68, 116.15, 122.61, 122.61, 129.00, 135.48, 141.92, 148.40, 154.83, 161.33, 167.81, 174.21, 180.69, 187.11, 187.17, 193.59, 200.03, 206.46, 212.93, 219.38, 225.86, 232.28, 238.73, 245.16, 245.18, 251.72, 258.06, 264.59, 271.04, 277.46, 283.92, 290.36, 296.79, 303.29, 309.69, 309.71, 316.19],
+    N: [42.54, 46.26, 49.86, 51.62, 58.10, 58.10, 64.56, 71.00, 77.46, 83.88, 90.33, 96.80, 103.28, 109.70, 116.15, 122.66, 122.66, 129.08, 135.51, 141.99, 148.46, 154.89, 161.34, 167.82, 174.27, 180.69, 187.13, 187.16, 193.64, 200.10, 206.52, 212.97, 219.48, 225.92, 232.28, 238.82, 245.27, 245.27, 251.66, 258.23, 264.59, 271.04, 277.58, 283.98, 290.46, 296.90, 303.35, 309.81, 309.83, 316.25],
+    O: [42.54, 46.26, 49.86, 51.62, 58.10, 58.10, 64.56, 71.00, 77.46, 83.88, 90.33, 96.80, 103.26, 109.76, 116.16, 122.61, 122.63, 129.03, 135.51, 142.01, 148.43, 154.89, 161.34, 167.78, 174.23, 222.30, 229.95, 230.12, 237.93, 245.88, 253.70, 261.71, 269.54, 277.49, 285.23, 293.27, 300.99, 301.07, 308.94, 316.91, 324.77, 332.63, 340.58, 348.44, 356.30, 364.16, 372.11, 380.06, 380.06, 388.07]
+};
+const tarifaPorLibraZona = {A: 19.53, B: 6.33, C: 6.33, D: 5.87, E: 5.69, F: 18.77, G: 10.83,
+    H: 7.79, I: 20.70, J: 10.82, K: 6.33, L: 20.67, M: 6.33, N: 6.33, O: 7.79};
+  
+const paises = [
+{ nombre: 'Argentina', codigo: 'AR', zona: 'J' },
+{ nombre: 'Aruba', codigo: 'AW', zona: 'D' },
+{ nombre: 'Australia', codigo: 'AU', zona: 'M' },
+{ nombre: 'Austria', codigo: 'AT', zona: 'M' },
+{ nombre: 'Bahamas', codigo: 'BS', zona: 'D' },
+{ nombre: 'Barbados', codigo: 'BB', zona: 'D' },
+{ nombre: 'Bangladés', codigo: 'BD', zona: 'M' },
+{ nombre: 'Bélgica', codigo: 'BE', zona: 'C' },
+{ nombre: 'Belice', codigo: 'BZ', zona: 'J' },
+{ nombre: 'Bermudas', codigo: 'BM', zona: 'D' },
+{ nombre: 'Bolivia', codigo: 'BO', zona: 'J' },
+{ nombre: 'Bonaire', codigo: 'XB', zona: 'D' },
+{ nombre: 'Brasil', codigo: 'BR', zona: 'G' },
+{ nombre: 'Bulgaria', codigo: 'BG', zona: 'M' },
+{ nombre: 'Camerún', codigo: 'CM', zona: 'I' },
+{ nombre: 'Canadá', codigo: 'CA', zona: 'K' },
+{ nombre: 'Islas Canarias', codigo: 'IC', zona: 'M' },
+{ nombre: 'Cabo Verde', codigo: 'CV', zona: 'I' },
+{ nombre: 'Islas Caimán', codigo: 'KY', zona: 'D' },
+{ nombre: 'Chile', codigo: 'CL', zona: 'J' },
+{ nombre: 'China', codigo: 'CN', zona: 'H' },
+{ nombre: 'Congo', codigo: 'CG', zona: 'I' },
+{ nombre: 'Congo, R. D.', codigo: 'CD', zona: 'I' },
+{ nombre: 'Costa Rica', codigo: 'CR', zona: 'J' },
+{ nombre: 'Croacia', codigo: 'HR', zona: 'L' },
+{ nombre: 'Cuba', codigo: 'CU', zona: 'D' },
+{ nombre: 'Curazao', codigo: 'XC', zona: 'D' },
+{ nombre: 'Chipre', codigo: 'CY', zona: 'M' },
+{ nombre: 'República Checa', codigo: 'CZ', zona: 'M' },
+{ nombre: 'Dinamarca', codigo: 'DK', zona: 'M' },
+{ nombre: 'República Dominicana', codigo: 'DO', zona: 'D' },
+{ nombre: 'Ecuador', codigo: 'EC', zona: 'J' },
+{ nombre: 'Egipto', codigo: 'EG', zona: 'A' },
+{ nombre: 'El Salvador', codigo: 'SV', zona: 'J' },
+{ nombre: 'Eritrea', codigo: 'ER', zona: 'F' },
+{ nombre: 'Estonia', codigo: 'EE', zona: 'M' },
+{ nombre: 'Etiopía', codigo: 'ET', zona: 'F' },
+{ nombre: 'Fiyi', codigo: 'FJ', zona: 'F' },
+{ nombre: 'Finlandia', codigo: 'FI', zona: 'M' },
+{ nombre: 'Francia', codigo: 'FR', zona: 'C' },
+{ nombre: 'Guayana Francesa', codigo: 'GF', zona: 'J' },
+{ nombre: 'Georgia', codigo: 'GE', zona: 'L' },
+{ nombre: 'Alemania', codigo: 'DE', zona: 'C' },
+{ nombre: 'Ghana', codigo: 'GH', zona: 'F' },
+{ nombre: 'Gibraltar', codigo: 'GI', zona: 'M' },
+{ nombre: 'Grecia', codigo: 'GR', zona: 'M' },
+{ nombre: 'Groenlandia', codigo: 'GL', zona: 'M' },
+{ nombre: 'Guinea', codigo: 'GN', zona: 'F' },
+{ nombre: 'Guinea Ecuatorial', codigo: 'GQ', zona: 'F' },
+{ nombre: 'Haití', codigo: 'HT', zona: 'D' },
+{ nombre: 'Honduras', codigo: 'HN', zona: 'J' },
+{ nombre: 'Hong Kong', codigo: 'HK', zona: 'E' },
+{ nombre: 'Hungría', codigo: 'HU', zona: 'M' },
+{ nombre: 'Islandia', codigo: 'IS', zona: 'M' },
+{ nombre: 'India', codigo: 'IN', zona: 'O' },
+{ nombre: 'Indonesia', codigo: 'ID', zona: 'O' },
+{ nombre: 'Irán', codigo: 'IR', zona: 'A' },
+{ nombre: 'Irak', codigo: 'IQ', zona: 'A' },
+{ nombre: 'Irlanda', codigo: 'IE', zona: 'C' },
+{ nombre: 'Israel', codigo: 'IL', zona: 'A' },
+{ nombre: 'Italia', codigo: 'IT', zona: 'C' },
+{ nombre: 'Jamaica', codigo: 'JM', zona: 'D' },
+{ nombre: 'Japón', codigo: 'JP', zona: 'B' },
+{ nombre: 'Jordania', codigo: 'JO', zona: 'A' },
+{ nombre: 'Kazajistán', codigo: 'KZ', zona: 'L' },
+{ nombre: 'Kenia', codigo: 'KE', zona: 'I' },
+{ nombre: 'Corea del Sur', codigo: 'KR', zona: 'B' },
+{ nombre: 'Kosovo', codigo: 'KV', zona: 'L' },
+{ nombre: 'Kuwait', codigo: 'KW', zona: 'A' },
+{ nombre: 'Laos', codigo: 'LA', zona: 'O' },
+{ nombre: 'Líbano', codigo: 'LB', zona: 'A' },
+{ nombre: 'Liberia', codigo: 'LR', zona: 'I' },
+{ nombre: 'Liechtenstein', codigo: 'LI', zona: 'M' },
+{ nombre: 'Lituania', codigo: 'LT', zona: 'M' },
+{ nombre: 'Luxemburgo', codigo: 'LU', zona: 'C' },
+{ nombre: 'Malasia', codigo: 'MY', zona: 'O' },
+{ nombre: 'Malta', codigo: 'MT', zona: 'M' },
+{ nombre: 'México', codigo: 'MX', zona: 'N' },
+{ nombre: 'Moldavia', codigo: 'MD', zona: 'M' },
+{ nombre: 'Mónaco', codigo: 'MC', zona: 'C' },
+{ nombre: 'Mongolia', codigo: 'MN', zona: 'F' },
+{ nombre: 'Montenegro', codigo: 'ME', zona: 'L' },
+{ nombre: 'Marruecos', codigo: 'MA', zona: 'I' },
+{ nombre: 'Mozambique', codigo: 'MZ', zona: 'I' },
+{ nombre: 'Birmania (Myanmar)', codigo: 'MM', zona: 'F' },
+{ nombre: 'Namibia', codigo: 'NA', zona: 'I' },
+{ nombre: 'Países Bajos', codigo: 'NL', zona: 'C' },
+{ nombre: 'Nicaragua', codigo: 'NI', zona: 'J' },
+{ nombre: 'Nigeria', codigo: 'NG', zona: 'I' },
+{ nombre: 'Noruega', codigo: 'NO', zona: 'M' },
+{ nombre: 'Panamá', codigo: 'PA', zona: 'J' },
+{ nombre: 'Paraguay', codigo: 'PY', zona: 'J' },
+{ nombre: 'Perú', codigo: 'PE', zona: 'J' },
+{ nombre: 'Filipinas', codigo: 'PH', zona: 'O' },
+{ nombre: 'Polonia', codigo: 'PL', zona: 'M' },
+{ nombre: 'Portugal', codigo: 'PT', zona: 'C' },
+{ nombre: 'Catar', codigo: 'QA', zona: 'A' },
+{ nombre: 'Rumanía', codigo: 'RO', zona: 'M' },
+{ nombre: 'Rusia', codigo: 'RU', zona: 'L' },
+{ nombre: 'Arabia Saudita', codigo: 'SA', zona: 'A' },
+{ nombre: 'Senegal', codigo: 'SN', zona: 'I' },
+{ nombre: 'Serbia', codigo: 'RS', zona: 'L' },
+{ nombre: 'Singapur', codigo: 'SG', zona: 'O' },
+{ nombre: 'Eslovaquia', codigo: 'SK', zona: 'M' },
+{ nombre: 'Eslovenia', codigo: 'SI', zona: 'M' },
+{ nombre: 'Sudáfrica', codigo: 'ZA', zona: 'I' },
+{ nombre: 'España', codigo: 'ES', zona: 'C' },
+{ nombre: 'Sri Lanka', codigo: 'LK', zona: 'O' },
+{ nombre: 'San Martín', codigo: 'XM', zona: 'D' },
+{ nombre: 'Sudán', codigo: 'SD', zona: 'I' },
+{ nombre: 'Surinam', codigo: 'SR', zona: 'J' },
+{ nombre: 'Suecia', codigo: 'SE', zona: 'M' },
+{ nombre: 'Suiza', codigo: 'CH', zona: 'M' },
+{ nombre: 'Siria', codigo: 'SY', zona: 'A' },
+{ nombre: 'Taiwán', codigo: 'TW', zona: 'C' },
+{ nombre: 'Tanzania', codigo: 'TZ', zona: 'I' },
+{ nombre: 'Tailandia', codigo: 'TH', zona: 'O' },
+{ nombre: 'Trinidad y Tobago', codigo: 'TT', zona: 'D' },
+{ nombre: 'Túnez', codigo: 'TN', zona: 'I' },
+{ nombre: 'Turquía', codigo: 'TR', zona: 'A' },
+{ nombre: 'Ucrania', codigo: 'UA', zona: 'L' },
+{ nombre: 'Emiratos Árabes Unidos', codigo: 'AE', zona: 'A' },
+{ nombre: 'Reino Unido', codigo: 'GB', zona: 'C' },
+{ nombre: 'Uruguay', codigo: 'UY', zona: 'J' },
+{ nombre: 'Venezuela', codigo: 'VE', zona: 'J' },
+{ nombre: 'Vietnam', codigo: 'VN', zona: 'O' },
+{ nombre: 'Islas Vírgenes Británicas', codigo: 'VG', zona: 'D' },
+{ nombre: 'Zimbabue', codigo: 'ZW', zona: 'I' }
+];
+
+const paisSelect = document.getElementById('pais');
+const colombiaFields = document.getElementById('colombiaFields');
+const otrosFields = document.getElementById('otrosFields');
+const cajaFieldsCol = document.getElementById('cajaFieldsCol');
+const tipoEnvioColSelect = document.getElementById('tipoEnvioCol');
+const mensajeDiv = document.getElementById('mensaje');
+const resultadoDiv = document.getElementById('resultado');
+
+function cargarPaises() {
+    const paisesOrdenados = paises.sort((a, b) => a.nombre.localeCompare(b.nombre));
+    paisesOrdenados.forEach(pais => {
+        if (pais.nombre !== 'Colombia' && pais.nombre !== 'Estados Unidos') {
+            const option = document.createElement('option');
+            option.value = pais.nombre;
+            option.textContent = `${pais.nombre} (${pais.codigo})`;
+            paisSelect.appendChild(option);
+        }
+    });
+}
+
+function toggleCotizador() {
+    const pais = paisSelect.value;
+    if (pais === 'Colombia') {
+        colombiaFields.style.display = 'block';
+        otrosFields.style.display = 'none';
+        toggleTipoEnvioCol();
+    } else {
+        colombiaFields.style.display = 'none';
+        otrosFields.style.display = 'block';
+    }
+    limpiarMensajes();
+}
+
+function toggleTipoEnvioCol() {
+    const tipoEnvio = tipoEnvioColSelect.value;
+    cajaFieldsCol.style.display = (tipoEnvio === 'Documento') ? 'none' : 'block';
+}
+
+function reiniciarFormulario() {
+    document.getElementById('pesoCol').value = 1;
+    document.getElementById('valorDeclaradoCol').value = 30;
+    document.getElementById('ancho').value = 12;
+    document.getElementById('alto').value = 12;
+    document.getElementById('largo').value = 12;
+    document.getElementById('peso').value = 1;
+
+    tipoEnvioColSelect.value = 'Documento';
+    paisSelect.value = 'Colombia';
+    toggleCotizador();
+    limpiarMensajes();
+
+    // 🕒 Espera 300 ms antes de hacer scroll para que sea más fluido
+    setTimeout(() => {
+        document.querySelector('.container').scrollIntoView({ behavior: 'smooth' });
+    }, 300);
+}
+
+
+function limpiarMensajes() {
+    mensajeDiv.style.display = 'none';
+    mensajeDiv.textContent = '';
+    resultadoDiv.innerHTML = '';
+}
+
+function calcularEnvio() {
+    limpiarMensajes();
+    const pais = paisSelect.value;
+
+    if (pais === 'Colombia') {
+        const tipoEnvio = tipoEnvioColSelect.value;
+        const peso = parseFloat(document.getElementById('pesoCol').value);
+        const valorDeclarado = parseFloat(document.getElementById('valorDeclaradoCol').value);
+        const ancho = parseFloat(document.getElementById('ancho').value);
+        const alto = parseFloat(document.getElementById('alto').value);
+        const largo = parseFloat(document.getElementById('largo').value);
+
+        if (tipoEnvio === 'Caja' && peso > 110) {
+            mostrarMensaje('El peso máximo permitido es 110 lb.', true);
+            return;
+        }
+        if (valorDeclarado > 2000) {
+            mostrarMensaje('El valor declarado máximo permitido es $2000.', true);
+            return;
+        }
+
+        let flete = 0, seguro = 6, redespacho = 6, volumen = 0, arancel = 0;
+
+        if (tipoEnvio === 'Documento') {
+            flete = 11;
+        } else if (tipoEnvio === 'Caja') {
+            flete = peso <= 15 ? 22.5 : 22.5 + (peso - 15) * 1.5;
+            const volumenLibras = (ancho * alto * largo) / 139;
+            if (volumenLibras > peso) {
+                volumen = (volumenLibras - peso) * 0.5;
+            }
+        }
+
+        const seguroCalc = Math.max(valorDeclarado * 0.06, seguro);
+        if (valorDeclarado > 200) {
+            arancel = valorDeclarado * 0.31;
+        }
+
+        const total = flete + seguroCalc + redespacho + volumen + arancel;
+        const flag = getFlagEmoji('CO');
+
+        mostrarResultado([
+            { label: 'País', valor: `${flag} Colombia` },
+            { label: 'Flete', valor: flete.toFixed(2) },
+            { label: 'Seguro', valor: seguroCalc.toFixed(2) },
+            { label: 'Redespacho', valor: redespacho.toFixed(2) },
+            { label: 'Volumen', valor: volumen.toFixed(2) },
+            { label: 'Arancel', valor: arancel.toFixed(2) },
+            { label: 'TOTAL', valor: total.toFixed(2), destacado: true }
+        ]);
+    } else {
+        const peso = parseFloat(document.getElementById('peso').value);
+        const paisObj = paises.find(p => p.nombre === pais);
+        const zona = paisObj ? paisObj.zona : null;
+        const flag = getFlagEmoji(paisObj.codigo.toUpperCase());
+
+        if (peso > 200) {
+            mostrarMensaje('El peso máximo permitido es 200 lb.', true);
+            return;
+        }
+
+        const tarifas = tarifasPorZona[zona];
+        let tarifa;
+
+        if (peso <= 50) {
+            tarifa = tarifas[peso - 1];
+        } else {
+            const tarifaBase = tarifas[49];
+            const librasExtra = peso - 50;
+            const adicionalPorLibra = tarifaPorLibraZona[zona];
+            tarifa = tarifaBase + (librasExtra * adicionalPorLibra);
+        }
+
+        mostrarResultado([
+            { label: 'País', valor: `${flag} ${pais}` },
+            { label: 'Zona', valor: zona },
+            { label: 'Flete', valor: tarifa.toFixed(2) },
+            { label: 'TOTAL', valor: tarifa.toFixed(2), destacado: true }
+        ]);
+    }
+}
+
+function mostrarMensaje(texto, esError = false) {
+    mensajeDiv.textContent = texto;
+    mensajeDiv.className = esError ? 'error' : '';
+    mensajeDiv.style.display = 'block';
+}
+
+function mostrarResultado(items) {
+    let html = '';
+    items.forEach(item => {
+        if (!item.destacado) {
+            if (item.label === 'País' || item.label === 'Zona') {
+                html += `<div><span class="item-label">${item.label}:</span> ${item.valor}</div>`;
+            } else {
+                html += `<div><span class="item-label">${item.label}:</span> $${item.valor}</div>`;
+            }
+        }
+    });
+    const totalItem = items.find(item => item.destacado);
+    if (totalItem) {
+        html += `<div class="total-button">${totalItem.label}: $${totalItem.valor}</div>`;
+    }
+    resultadoDiv.innerHTML = html;
+
+    // 👇 Aquí agregamos el scroll hacia los resultados
+    setTimeout(() => {
+    const target = document.getElementById('botonReset');
+    const yOffset = -80; // Ajusta esto para compensar lo que se ve en iPhone
+    const y = target.getBoundingClientRect().top + window.pageYOffset + yOffset;
+
+    window.scrollTo({ top: y, behavior: 'smooth' });
+}, 200);
+
+
+}
+
+function getFlagEmoji(countryCode) {
+    if (!countryCode || countryCode.length !== 2) {
+        return countryCode;
+    }
+    const codePoints = countryCode.toUpperCase().split('').map(char => 127397 + char.charCodeAt());
+    return String.fromCodePoint(...codePoints);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    cargarPaises();
+    toggleCotizador();
+});
+</script>
+</body>
+</html>
