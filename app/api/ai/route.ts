@@ -32,8 +32,10 @@ export async function POST(request: NextRequest) {
   }
 
   const content: unknown[] = [{ type: "input_text", text: body.action === "scan"
-    ? `Extrae del empaque: nombre comercial o genérico, concentración, presentación y cantidad del envase. Devuelve JSON válido con las claves name, strength, presentation, package_quantity, warning. No inventes campos ilegibles.`
-    : `${system}\n\nDatos del paciente y registros:\n${JSON.stringify(body.context || {})}\n\nPregunta: ${String(body.question || "")}` }];
+    ? `Lee cuidadosamente el frente y cualquier texto visible del empaque. Devuelve solamente JSON válido: {"name":"", "strength":"", "presentation":"", "package_quantity":null, "warning":""}. name es el nombre comercial o genérico; strength incluye número y unidad; package_quantity es solo la cantidad de tabletas/cápsulas si resulta legible. No inventes información.`
+    : body.action === "schedule"
+      ? `${system}\n\nPropón únicamente horarios de organización para la frecuencia indicada, usando la rutina y comidas proporcionadas. No cambies la frecuencia ni interpretes instrucciones ambiguas. Si el médico indicó una relación con alimentos, respétala; si no la indicó, no la inventes. Distribuye las tomas razonablemente durante las horas despierto. Devuelve solamente JSON válido: {"times":["HH:MM"],"explanation":"explicación breve y advertencia de confirmación"}. Datos:\n${JSON.stringify(body.context || {})}`
+      : `${system}\n\nHoy es ${body.context?.today || "la fecha indicada"}. Contesta exactamente la pregunta usando estos datos. Los registros en logs representan dosis registradas como tomadas; no supongas que una dosis sin registro no fue tomada.\n${JSON.stringify(body.context || {})}\n\nPregunta: ${String(body.question || "")}` }];
   if (body.action === "scan" && body.image) content.push({ type: "input_image", image_url: body.image, detail: "high" });
 
   const response = await fetch("https://api.openai.com/v1/responses", {
@@ -44,7 +46,7 @@ export async function POST(request: NextRequest) {
   const data = await response.json();
   if (!response.ok) return NextResponse.json({ error: "No se pudo consultar Alivia." }, { status: 502 });
   const text = data.output_text || data.output?.flatMap((x: any) => x.content || []).find((x: any) => x.type === "output_text")?.text || "";
-  if (body.action === "scan") {
+  if (body.action === "scan" || body.action === "schedule") {
     try { return NextResponse.json({ result: JSON.parse(text.replace(/^```json\s*|\s*```$/g, "")) }); }
     catch { return NextResponse.json({ result: { warning: "Revisa manualmente la información", raw: text } }); }
   }

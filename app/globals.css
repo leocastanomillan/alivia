@@ -150,6 +150,16 @@ label{display:block;font-weight:800;color:#244b70}.content{display:flex;flex-dir
 button {
   cursor: pointer;
 }
+.google-button{display:flex;align-items:center;justify-content:center;gap:.75rem}
+.google-mark{height:1.45rem;width:1.45rem;flex:none}
+.invite-code{margin:1rem 0;border:2px dashed #1687d9;border-radius:1rem;background:#eef7ff;padding:1rem;text-align:center;font-size:2rem;font-weight:900;letter-spacing:.18em;color:#073b86}
+.hold-to-talk{margin-top:1rem;display:flex;min-height:5rem;width:100%;align-items:center;justify-content:center;gap:1rem;border:2px solid #78b4e8;border-radius:1rem;background:#eef7ff;padding:1rem;color:#075cb7;touch-action:none}
+.hold-to-talk.listening{border-color:#075cb7;background:#dceeff;box-shadow:0 0 0 5px #1687d933}
+.voice-bars{display:flex;height:2rem;align-items:center;gap:.2rem}
+.voice-bars i{display:block;width:.23rem;height:35%;border-radius:999px;background:#075cb7}
+.listening .voice-bars i{animation:voice-wave .72s ease-in-out infinite}
+.listening .voice-bars i:nth-child(2),.listening .voice-bars i:nth-child(4){animation-delay:.12s}
+.listening .voice-bars i:nth-child(3){animation-delay:.24s}
 .eyebrow {
   font-size: 0.8rem;
   font-weight: 900;
